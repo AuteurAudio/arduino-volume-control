@@ -4,7 +4,7 @@ This is a system for controlling a PGA2311 or similar volume
 control with an Arduino.  It is quite featureful, with pushbutton
 mute, multiple supported channels (relay switched), compile time
 balance, etc.  Will run on most any Arduino with enough I/O for 
-the features that desire enabling.  This is a complete large system;
+the features that desire enabling.  This is a complete large system - 
 you will have to pull out what you need for a reduced feature set.
  
 
