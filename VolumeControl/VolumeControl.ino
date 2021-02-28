@@ -10,8 +10,7 @@
   * General pin definitions
   */
  
- 
-// Relating to volume control via encoder 
+// Relating to volume control via encoder
 #define volumeKnobPin1         3         // INPUT Encoder pin (works best with interrupt pins)
 #define volumeKnobPin2         2         // INPUT Encoder pin (switch pins to reverse direction)
 
@@ -26,29 +25,23 @@
 // (192 is 0 dB -- e.g. no gain)
 #define maximumVolume          192
 
-
 /*
  * Includes, variables and some options
  */
- 
- 
+
 //#define ENCODER_DO_NOT_USE_INTERRUPTS          // An option for the Encoder library
 #include <Encoder.h>
 #include <EEPROM.h>
 
- 
-// Encoder instantiation  
+// Encoder instantiation
 Encoder   volumeKnob(volumeKnobPin1, volumeKnobPin2);
 long      newVolumePosition;
-long      tempChannelVolume;
-byte      channelVolume;
+long      tempVolume;
+byte      baseVolume;
 long int  delayTimeout;
 
 // Other variables
 int       isMuted =          false;            // Internally used status for mute state
-int       channelRun =       false;            // Internally used status for passing control to channel 
-int       outputRun =        false;            // Internally used status for passing control to output 
-
 
 /*
  * Inline function to write a byte to the PGA4311
@@ -61,28 +54,26 @@ static inline void byteWrite(byte byteOut){
      else digitalWrite(volumeDataPin, LOW);
      digitalWrite(volumeClockPin, HIGH);
      digitalWrite(volumeClockPin, LOW);
-     byteOut<<=1;   
+     byteOut<<=1;
    }
 }
- 
+
 /*
  * Function to set the (stereo) volume on the PGA4311
  */
 
 void setVolume(long volume){
    byte base_vol=(byte)volume;
-       
-   digitalWrite(volumeSelectPin, LOW);   
+
+   digitalWrite(volumeSelectPin, LOW);
    byteWrite(base_vol);
    byteWrite(base_vol);
    byteWrite(base_vol);
    byteWrite(base_vol);
-   digitalWrite(volumeSelectPin, HIGH);    
+   digitalWrite(volumeSelectPin, HIGH);
    digitalWrite(volumeClockPin, HIGH);
    digitalWrite(volumeDataPin, HIGH);
 }
-
-
 
 /*
  * Function to scale volume from one level to another (softer changes for mute)
@@ -91,7 +82,7 @@ void setVolume(long volume){
 void scaleVolume(byte startVolume, byte endVolume, byte volumeSteps){
   byte diff;
   long counter;
-  
+
   if(endVolume==startVolume){
     return;
   }
@@ -107,11 +98,11 @@ void scaleVolume(byte startVolume, byte endVolume, byte volumeSteps){
     counter=startVolume;
     while(counter<endVolume){
       setVolume(counter);
-      delay(25);  
-      counter+=diff;  
+      delay(25);
+      counter+=diff;
     }
-    setVolume(endVolume);               
-  }  
+    setVolume(endVolume);             
+  }
   else{
     Serial.print("Diminishing volume to (byte value) ");
     Serial.println(endVolume);
@@ -124,31 +115,27 @@ void scaleVolume(byte startVolume, byte endVolume, byte volumeSteps){
     counter=startVolume;
     while(counter>endVolume){
       setVolume(counter);
-      delay(25);  
-      counter-=diff; 
+      delay(25);
+      counter-=diff;
     }
-    setVolume(endVolume);              
-  }  
+    setVolume(endVolume);       
+  }
   return;
-}  
-
-
-
+}
 
 /*
  * Main Arduino setup call
  */
 
-
 void setup(){
-  
+
   // Initialize USB serial feedback for printing
   Serial.begin(38400);
   Serial.println("Initializing...");
-  
+
   // Mute the PGA4311
   pinMode(volumeMutePin,OUTPUT);
-  digitalWrite(volumeMutePin,LOW);           
+  digitalWrite(volumeMutePin,LOW);       
   
   // Set up control pins for PGA4311
   pinMode(volumeSelectPin,OUTPUT);
@@ -157,93 +144,93 @@ void setup(){
   digitalWrite(volumeSelectPin,HIGH);
   digitalWrite(volumeClockPin,HIGH);
   digitalWrite(volumeDataPin,HIGH);
-  
+
   // Delay a bit to wait for the state of the switches
   delay(100);
-  
+
   // Set volume to 0 for later soft volume start
   setVolume(0);
 
-  channelVolume=EEPROM.read(0);
-  
-  tempChannelVolume=channelVolume;
-  
+  baseVolume=EEPROM.read(0);
+
+  tempVolume=baseVolume;
+
   Serial.print("Setting initial volume to (byte value) ");
-  Serial.println(channelVolume);
-  
+  Serial.println(baseVolume);
+
   // Wait a bit for the whole system to come online
   delay(800);
-  
+
   // Unmute the PGA4311
-  digitalWrite(volumeMutePin,HIGH); 
+  digitalWrite(volumeMutePin,HIGH);
 
   // Wait a bit
-  delay(200);  
-  
+  delay(200);
+
   // Smoothly scale into last volume
-  scaleVolume(0,channelVolume,50);
-  
-  // Reset the encoder monitor  
+  scaleVolume(0,baseVolume,50);
+
+  // Reset the encoder monitor
   volumeKnob.write(0);
-  
+
 }
- 
+
 /*
- * Main Arduino loop 
+ * Main Arduino loop
  */
- 
+
 void loop(){
-  
+
  /*
-  * VOLUME 
-  */ 
-  
+  * VOLUME
+  */
+
   newVolumePosition=volumeKnob.read();
   if (newVolumePosition != 0) {
-      
+
     // This section delays the encoder to make it feel better for user experience
       if(millis()-delayTimeout>5){
-    
+
         // Unmute to last volume if the volume is changed
         if(isMuted==true){
-          Serial.println("Unmuting..."); 
-          scaleVolume(0,channelVolume,50);
+          Serial.println("Unmuting...");
+          scaleVolume(0,baseVolume,50);
         }
         isMuted=false;
-      
+
         // Grab knob differential value and enforce volume bounds
-        tempChannelVolume+=newVolumePosition;
-        if(tempChannelVolume<0){
-          tempChannelVolume=0;
+        tempVolume+=newVolumePosition;
+        if(tempVolume<0){
+          tempVolume=0;
         }
-        if(tempChannelVolume>maximumVolume){
-          tempChannelVolume=maximumVolume;
-        }  
-        
-        channelVolume=tempChannelVolume;
+        if(tempVolume>maximumVolume){
+          tempVolume=maximumVolume;
+        }
+
+        baseVolume=tempVolume;
         
         Serial.print("Volume = ");
-        if(channelVolume==0){
+        if(baseVolume==0){
           Serial.println("Mute");
         }
         else{
           // Save the volume setting
-          EEPROM.write(0,channelVolume);
-          
+          EEPROM.write(0,baseVolume);
+
           // Print it out for debug
-          Serial.print(31.5-((255-(float)channelVolume)/2));
+          Serial.print(31.5-((255-(float)baseVolume)/2));
           Serial.print(" dB (byte value = ");
-          Serial.print(channelVolume);
+          Serial.print(baseVolume);
           Serial.println(")");
         }
-        
+
         // Reset the knob position
         volumeKnob.write(0);
-        setVolume(channelVolume);
-        delayTimeout=millis();  
+        setVolume(baseVolume);
+        delayTimeout=millis();
     }
     else{
       volumeKnob.write(0);
     }
   }
-}  
+}
