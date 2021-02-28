@@ -15,11 +15,11 @@
 #define volumeKnobPin1         3         // INPUT Encoder pin (works best with interrupt pins)
 #define volumeKnobPin2         2         // INPUT Encoder pin (switch pins to reverse direction)
 
-// Relating to the PGA2311
-#define volumeClockPin         9         // OUTPUT Clock pin for volume control
-#define volumeDataPin          8         // OUTPUT Data pin for volume control
+// Relating to the PGA4311
+#define volumeClockPin         8         // OUTPUT Clock pin for volume control
+#define volumeDataPin          11         // OUTPUT Data pin for volume control
 #define volumeSelectPin        10        // OUTPUT Select pin for volume control
-#define volumeMutePin          11        // OUTPUT Mute pin for the volume control   
+#define volumeMutePin          9        // OUTPUT Mute pin for the volume control  
 
 // Relating to debouncing the mute and channel select pins
 #define muteSwitchPin          5         // INPUT Momentary switch for mute
