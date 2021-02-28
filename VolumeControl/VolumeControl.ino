@@ -25,17 +25,10 @@
 #define muteSwitchPin          5         // INPUT Momentary switch for mute
 #define channelSwitchPin       6         // Toggle input for channel select
 #define outputSwitchPin        4         // Toggle for impedance control for output
-#define switchDebounceTime     50        // Milliseconds switch needs to be in state before effect (ms)
 
 // Output pin to control input channel relay and output impedance shunt relay
 #define channelRelayPin        12        // Pin to control the relay for channel selection
 #define outputRelayPin         7         // Pin to control relay for output for turnout delay
-
-// Input pin for selecting balance selection
-#define balanceSwitchPin       13        // This default is the LED output pin on a stock
-                                         // Arduino -- make sure you are dragging the pin 
-                                         // with enough oomph to get past the LED circuit
-
 
 // XOR logic reversal for switches and relays
 // Somewhat redundant, but allows the logic states to be deterministic on both input and output
@@ -44,8 +37,6 @@
 #define outputSwitchReverse    HIGH
 #define outputRelayReverse     HIGH
 #define balanceSwitchReverse   LOW
-
-
 
 // Maximum (byte value) of the volume to send to the PGA2311
 // This is here to avoid regions where the high gains has too high S/N
@@ -73,7 +64,6 @@
  
 //#define ENCODER_DO_NOT_USE_INTERRUPTS          // An option for the Encoder library
 #include <Encoder.h>
-#include <Bounce.h>
 #include <EEPROM.h>
 
  
@@ -83,15 +73,6 @@ long      newVolumePosition;
 long      tempChannelVolume;
 byte      channelVolume;
 long int  delayTimeout;
-
-// Debouncer instantiation
-Bounce    muteSwitch =       Bounce(muteSwitchPin,switchDebounceTime);
-Bounce    channelSwitch =    Bounce(channelSwitchPin,switchDebounceTime);
-Bounce    outputSwitch =     Bounce(outputSwitchPin,switchDebounceTime);
-Bounce    balanceSwitch =    Bounce(balanceSwitchPin,switchDebounceTime);
-
-// Relating to balance
-int       balanceConstant =  0;                // Default to zero until it is loaded
 
 // Other variables
 int       isMuted =          false;            // Internally used status for mute state
@@ -120,38 +101,17 @@ static inline void byteWrite(byte byteOut){
  
  
 /*
- * Function to set the (stereo) volume on the PGA2311
+ * Function to set the (stereo) volume on the PGA4311
  */
 
 void setVolume(long volume){
-   
-   long int r_vol_test;
-   
-   byte l_vol=(byte)volume;
-   byte r_vol=0;
-   
-   l_vol=volume;
-   r_vol_test=volume+balanceConstant;
-  
-   // This implies that balanceConstant>0 
-   // This test is unlikely to run unless maximumVolume is 255 or very close
-   if(r_vol_test>255){
-      r_vol=255;
-      l_vol=255-balanceConstant;
-   }
-   // This implies that balanceConstant<0... both channels should be off at once
-   else if(r_vol_test<0){
-     r_vol=0;
-     l_vol=0;
-   }
-   // Business as usual  
-   else{
-     r_vol=(byte)r_vol_test;
-   }
+   byte base_vol=(byte)volume;
        
    digitalWrite(volumeSelectPin, LOW);   
-   byteWrite(r_vol);                                // Right        
-   byteWrite(l_vol);                                // Left
+   byteWrite(base_vol);
+   byteWrite(base_vol);
+   byteWrite(base_vol);
+   byteWrite(base_vol);
    digitalWrite(volumeSelectPin, HIGH);    
    digitalWrite(volumeClockPin, HIGH);
    digitalWrite(volumeDataPin, HIGH);
@@ -241,7 +201,7 @@ void setup(){
   pinMode(outputRelayPin,OUTPUT);
   
   // Delay a bit to wait for the state of the switches
-  delay(switchDebounceTime+50);  
+  delay(100);  
   
   // Read the channel switch and set the appropriate volume
   channelSwitch.update();
