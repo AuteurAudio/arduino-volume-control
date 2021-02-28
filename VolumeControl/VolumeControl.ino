@@ -50,16 +50,7 @@
 // Maximum (byte value) of the volume to send to the PGA2311
 // This is here to avoid regions where the high gains has too high S/N
 // (192 is 0 dB -- e.g. no gain)
-#define maximumVolume          192                
-
-
-// Default definition for balance 
-// If this is set then it overrides the setting of balance 
-// This is a number added to the right channel in 0.5dB increments
-// (e.g. -2 means right is 1 dB quieter than left) 
-// Comment out if you want to use the feauture, 
-// uncomment to use the fixed value
-#define balanceValue          -1
+#define maximumVolume          192
 
 
 
@@ -248,28 +239,9 @@ void setup(){
   pinMode(outputSwitchPin,INPUT);
   pinMode(channelRelayPin,OUTPUT);
   pinMode(outputRelayPin,OUTPUT);
-  #ifndef balanceValue
-    Serial.println("Setting balance input pin...");
-    pinMode(balanceSwitchPin,INPUT);
-  #endif
   
   // Delay a bit to wait for the state of the switches
-  delay(switchDebounceTime+50);
- 
-  // Load the existing balance setting if we are using dynamic setting
-  #ifndef balanceValue
-    Serial.print("Loading existing balance = ");
-    // Adjust by have a byte for the signed issue
-    balanceConstant=EEPROM.read(0)-127;
-    Serial.println(balanceConstant);
-  #endif
-  
-  // Load the balance constant if it is static
-  #ifdef balanceValue
-    Serial.println("Using static balance...");
-    balanceConstant=balanceValue;
-  #endif
-  
+  delay(switchDebounceTime+50);  
   
   // Read the channel switch and set the appropriate volume
   channelSwitch.update();
@@ -339,61 +311,7 @@ void setup(){
  * Main Arduino loop 
  */
  
-void loop(){
-  
-  
-    /*
-     * BALANCE
-     */
-     
-     #ifndef balanceValue
-     
-         // Just update it, don't test on it
-         balanceSwitch.update();
-           
-         // If it is a go then get into the below blocking loop  
-         if(balanceSwitch.read()==(HIGH^balanceSwitchReverse)){  
-        
-           Serial.println("Entering balance adjust mode...");
-            
-           // Stick to this loop while the balance pin is engaged
-           while(balanceSwitch.read()==(HIGH^balanceSwitchReverse)){
-             
-             // Get the new reading from the encoder 
-             // (Yes, the names are funny since the default behavior and variables are for volume)
-             newVolumePosition=volumeKnob.read();
-             
-             if (newVolumePosition != 0) {
-             
-               // Wait for the faux debounce  
-               if(millis()-delayTimeout>5){
-                 
-                   // Adjust the balance
-                   Serial.print("Changing balance setting to ");
-                   balanceConstant+=newVolumePosition;
-                   Serial.println(balanceConstant);
-                   
-                   // Save the new value, making it positive and centered in the byte
-                   EEPROM.write(0,balanceConstant+127);
-                   
-                   // Set the volume so that the change takes effect
-                   setVolume(channelVolume);
-                   
-                   // Reset the knob position
-                   volumeKnob.write(0);
-                   delayTimeout=millis();  
-                
-                }
-                else{
-                  volumeKnob.write(0);
-                } 
-            } 
-            balanceSwitch.update();
-         } 
-       }
-     
-     #endif
-     
+void loop(){     
   
     /*
      * OUTPUT SWITCH
